@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,29 +11,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Send, Save } from "lucide-react";
 import Link from "next/link";
+import { createCampaign, sendCampaignNow } from "@/lib/actions/campaigns";
 
 export default function NewCampaignPage() {
   const router = useRouter();
-  const supabase = createClient();
 
   const [subject, setSubject] = useState("");
   const [previewText, setPreviewText] = useState("");
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
-
-  async function getPublicationId(): Promise<string | null> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
-
-    const { data: org } = (await supabase
-      .from("organizations")
-      .select("id, publications(id)")
-      .eq("owner_id", user.id)
-      .limit(1)
-      .single()) as { data: { id: string; publications: { id: string }[] } | null; error: unknown };
-
-    return (org?.publications as { id: string }[])?.[0]?.id ?? null;
-  }
+  const [sending, setSending] = useState(false);
 
   async function handleSaveDraft() {
     if (!subject.trim()) {
@@ -42,32 +28,79 @@ export default function NewCampaignPage() {
       return;
     }
     setSaving(true);
-    const pubId = await getPublicationId();
-    if (!pubId) {
-      toast.error("パブリケーションが見つかりません");
-      setSaving(false);
-      return;
-    }
-    const { data, error } = await supabase.from("campaigns").insert({
-      publication_id: pubId,
-      subject: subject.trim(),
-      preview_text: previewText.trim() || null,
-      content_json: { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: content }] }] },
-      content_html: `<p>${content}</p>`,
-      status: "draft",
-    }).select().single();
 
+    const fd = new FormData();
+    fd.set("subject", subject.trim());
+    fd.set("preview_text", previewText.trim());
+    fd.set("content_html", `<p>${content.replace(/\n/g, "</p><p>")}</p>`);
+    fd.set(
+      "content_json",
+      JSON.stringify({
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: content }] },
+        ],
+      })
+    );
+
+    const result = await createCampaign(fd);
     setSaving(false);
-    if (error) {
-      toast.error(error.message);
-      return;
+
+    if (result.success) {
+      toast.success("下書きを保存しました");
+      router.push(`/campaigns/${result.data.id}`);
+    } else {
+      toast.error(result.error);
     }
-    toast.success("下書きを保存しました");
-    router.push(`/campaigns/${data.id}`);
   }
 
-  async function handleSchedule() {
-    toast.info("スケジュール送信機能は準備中です");
+  async function handleSendNow() {
+    if (!subject.trim()) {
+      toast.error("件名を入力してください");
+      return;
+    }
+    if (!content.trim()) {
+      toast.error("本文を入力してください");
+      return;
+    }
+    setSending(true);
+
+    // First save as draft
+    const fd = new FormData();
+    fd.set("subject", subject.trim());
+    fd.set("preview_text", previewText.trim());
+    fd.set("content_html", `<p>${content.replace(/\n/g, "</p><p>")}</p>`);
+    fd.set(
+      "content_json",
+      JSON.stringify({
+        type: "doc",
+        content: [
+          { type: "paragraph", content: [{ type: "text", text: content }] },
+        ],
+      })
+    );
+
+    const createResult = await createCampaign(fd);
+    if (!createResult.success) {
+      toast.error(createResult.error);
+      setSending(false);
+      return;
+    }
+
+    // Then send
+    const sendFd = new FormData();
+    sendFd.set("id", createResult.data.id);
+    const sendResult = await sendCampaignNow(sendFd);
+    setSending(false);
+
+    if (sendResult.success) {
+      toast.success(`${sendResult.data.recipientCount}件の購読者に送信しました`);
+      router.push(`/campaigns/${createResult.data.id}`);
+    } else {
+      toast.error(sendResult.error);
+      // Draft was saved, navigate to it
+      router.push(`/campaigns/${createResult.data.id}`);
+    }
   }
 
   return (
@@ -165,11 +198,11 @@ export default function NewCampaignPage() {
               <Button
                 className="w-full"
                 size="sm"
-                onClick={handleSchedule}
-                disabled={!subject}
+                onClick={handleSendNow}
+                disabled={!subject || sending}
               >
                 <Send className="w-4 h-4 mr-1.5" />
-                今すぐ送信
+                {sending ? "送信中..." : "今すぐ送信"}
               </Button>
               <Button
                 variant="outline"

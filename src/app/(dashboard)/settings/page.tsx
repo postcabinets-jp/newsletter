@@ -4,9 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Key, Globe, Mail, Users } from "lucide-react";
+import { PublicationForm } from "@/components/dashboard/settings-forms";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -38,39 +38,14 @@ export default async function SettingsPage() {
               パブリケーション設定
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs">パブリケーション名</Label>
-              <Input
-                defaultValue={pub?.name ?? ""}
-                placeholder="TechInsider Weekly"
-                className="text-sm"
-                readOnly={!pub}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">スラッグ</Label>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-400 whitespace-nowrap">newsletter.vercel.app/</span>
-                <Input
-                  defaultValue={pub?.slug ?? ""}
-                  placeholder="my-newsletter"
-                  className="text-sm"
-                  readOnly={!pub}
-                />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">概要</Label>
-              <Textarea
-                defaultValue={pub?.description ?? ""}
-                placeholder="ニュースレターの説明..."
-                className="text-sm resize-none"
-                rows={3}
-                readOnly={!pub}
-              />
-            </div>
-            <Button size="sm" disabled>変更を保存</Button>
+          <CardContent>
+            <PublicationForm
+              existing={
+                pub
+                  ? { name: pub.name, slug: pub.slug, description: pub.description }
+                  : null
+              }
+            />
           </CardContent>
         </Card>
 

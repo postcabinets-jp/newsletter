@@ -5,6 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowLeft } from "lucide-react";
 import type { Campaign } from "@/types/database";
+import {
+  SendCampaignButton,
+  ScheduleCampaignButton,
+  CancelScheduleButton,
+  DeleteCampaignButton,
+} from "@/components/dashboard/campaign-actions";
 
 export default async function CampaignDetailPage({
   params,
@@ -114,6 +120,12 @@ export default async function CampaignDetailPage({
                 <span className="text-slate-500">作成日</span>
                 <span>{new Date(typedCampaign.created_at).toLocaleDateString("ja-JP")}</span>
               </div>
+              {typedCampaign.send_at && (
+                <div className="flex justify-between">
+                  <span className="text-slate-500">送信予定</span>
+                  <span>{new Date(typedCampaign.send_at).toLocaleString("ja-JP")}</span>
+                </div>
+              )}
               {typedCampaign.sent_at && (
                 <div className="flex justify-between">
                   <span className="text-slate-500">送信日</span>
@@ -123,12 +135,28 @@ export default async function CampaignDetailPage({
             </CardContent>
           </Card>
 
+          {/* Actions based on status */}
           {typedCampaign.status === "draft" && (
-            <Link href={`/campaigns/new`}>
-              <Button className="w-full" size="sm">
-                編集して送信
-              </Button>
-            </Link>
+            <Card className="border-slate-200">
+              <CardContent className="p-4 space-y-2">
+                <SendCampaignButton campaignId={typedCampaign.id} />
+                <ScheduleCampaignButton campaignId={typedCampaign.id} />
+                <Link href="/campaigns/new" className="block">
+                  <Button variant="outline" className="w-full" size="sm">
+                    編集
+                  </Button>
+                </Link>
+                <DeleteCampaignButton campaignId={typedCampaign.id} />
+              </CardContent>
+            </Card>
+          )}
+
+          {typedCampaign.status === "scheduled" && (
+            <Card className="border-slate-200">
+              <CardContent className="p-4 space-y-2">
+                <CancelScheduleButton campaignId={typedCampaign.id} />
+              </CardContent>
+            </Card>
           )}
         </div>
       </div>

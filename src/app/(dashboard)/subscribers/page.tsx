@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -13,8 +13,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Users, Upload, Download } from "lucide-react";
+import { Users } from "lucide-react";
 import type { Subscriber } from "@/types/database";
+import {
+  AddSubscriberButton,
+  ImportCsvButton,
+  ExportCsvButton,
+  SubscriberRowActions,
+} from "@/components/dashboard/subscriber-actions";
 
 const STATUS_LABELS: Record<string, { label: string; className: string }> = {
   active: { label: "アクティブ", className: "bg-emerald-50 text-emerald-700 border-emerald-200" },
@@ -89,14 +95,9 @@ export default async function SubscribersPage({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-1.5" />
-            CSV出力
-          </Button>
-          <Button size="sm">
-            <Upload className="w-4 h-4 mr-1.5" />
-            CSVインポート
-          </Button>
+          <ExportCsvButton />
+          <ImportCsvButton />
+          <AddSubscriberButton />
         </div>
       </div>
 
@@ -145,6 +146,7 @@ export default async function SubscribersPage({
                   <TableHead className="text-xs text-slate-500">ステータス</TableHead>
                   <TableHead className="text-xs text-slate-500">流入元</TableHead>
                   <TableHead className="text-xs text-slate-500">登録日</TableHead>
+                  <TableHead className="text-xs text-slate-500 w-10"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -173,6 +175,9 @@ export default async function SubscribersPage({
                       </TableCell>
                       <TableCell className="text-xs text-slate-500">
                         {new Date(sub.subscribed_at).toLocaleDateString("ja-JP")}
+                      </TableCell>
+                      <TableCell>
+                        <SubscriberRowActions subscriberId={sub.id} status={sub.status} />
                       </TableCell>
                     </TableRow>
                   );
